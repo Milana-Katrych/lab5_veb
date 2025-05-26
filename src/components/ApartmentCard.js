@@ -9,12 +9,13 @@ function ApartmentCard({ apt, index, onBook, onCancel, isBooked }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const user = auth.currentUser;
-
+  
   const API_URL = process.env.NODE_ENV === 'production' ? '' : 'http://localhost:4000';
 
   useEffect(() => {
     const fetchReviews = async () => {
       try {
+        if (!apt?.id) return;
         const normalizedId = apt.id.split(':')[0];
         const response = await fetch(`${API_URL}/api/reviews/${normalizedId}?page=${currentPage}`);
         if (!response.ok) {
@@ -32,8 +33,8 @@ function ApartmentCard({ apt, index, onBook, onCancel, isBooked }) {
         console.error('Error fetching reviews:', error.message);
       }
     };
-    if (apt.id) fetchReviews();
-  }, [apt.id, currentPage]);
+    fetchReviews();
+  }, [apt.id, currentPage, API_URL]);
 
   const handlePrev = () => {
     setCurrentPhoto((prev) => (prev === 0 ? apt.photos.length - 1 : prev - 1));
