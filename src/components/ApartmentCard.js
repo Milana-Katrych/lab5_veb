@@ -10,7 +10,7 @@ function ApartmentCard({ apt, index, onBook, onCancel, isBooked }) {
   const [totalPages, setTotalPages] = useState(1);
   const user = auth.currentUser;
   
-  const API_URL = process.env.NODE_ENV === 'production' ? '' : 'http://localhost:4000';
+ const API_URL = process.env.NODE_ENV === 'production' ? 'https://apartlive.onrender.com' : 'http://localhost:4000';
 
   useEffect(() => {
     const fetchReviews = async () => {
