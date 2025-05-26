@@ -21,7 +21,7 @@ const firebaseApp = initializeApp(firebaseConfig);
 const db = getFirestore(firebaseApp);
 
 app.use(cors({
-  origin: 'https://astonishing-phoenix-13f5c2.netlify.app',
+  origin: 'https://apartlive.onrender.com',
   methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type'],
   credentials: true
