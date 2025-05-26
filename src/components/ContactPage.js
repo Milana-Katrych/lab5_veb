@@ -22,7 +22,7 @@ function ContactPage() {
       <p>📍Top locations</p>
       <p>💬 Friendly support that actually replies</p>
       <p>We're not just a rental service. We're your next chapter.</p>
-      <img src="Photos/doggie2.webp"> alt="Contact"</img>
+      <img src="Photos/doggie2.webp" alt="Contact"></img>
       <form onSubmit={handleSubmit}>
         <label>Your name:</label>
         <input type="text" required />
