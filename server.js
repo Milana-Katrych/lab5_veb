@@ -21,9 +21,10 @@ const firebaseApp = initializeApp(firebaseConfig);
 const db = getFirestore(firebaseApp);
 
 app.use(cors({
-  origin: true,
+  origin: 'https://apartlive.onrender.com',
   methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type']
+  allowedHeaders: ['Content-Type'],
+  credentials: true
 }));
 app.use(express.json());
 
