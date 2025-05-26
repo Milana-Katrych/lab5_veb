@@ -10,7 +10,6 @@ function ApartmentCard({ apt, index, onBook, onCancel, isBooked }) {
   const [totalPages, setTotalPages] = useState(1);
   const user = auth.currentUser;
 
-  // Динамічний URL для API
   const API_URL = process.env.NODE_ENV === 'production' ? '' : 'http://localhost:4000';
 
   useEffect(() => {

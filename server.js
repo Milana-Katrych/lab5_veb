@@ -1,264 +1,120 @@
-import { useState, useEffect } from 'react';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { auth, db } from '../firebase';
+const express = require('express');
+const path = require('path');
+const { initializeApp } = require('firebase/app');
+const { getFirestore, collection, getDocs, query, orderBy, limit, startAfter, addDoc } = require('firebase/firestore');
+const cors = require('cors');
 
-function ApartmentCard({ apt, index, onBook, onCancel, isBooked }) {
-  const [currentPhoto, setCurrentPhoto] = useState(0);
-  const [reviewText, setReviewText] = useState('');
-  const [reviews, setReviews] = useState([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const user = auth.currentUser;
+const app = express();
+const port = process.env.PORT || 4000;
 
-  // Динамічний URL для API
-  const API_URL = process.env.NODE_ENV === 'production' ? '' : 'http://localhost:4000';
+const firebaseConfig = {
+  apiKey: "AIzaSyA4OzEY5QQGQjACKeQzHXDILO5TER_lcpk",
+  authDomain: "laba4-d5b38.firebaseapp.com",
+  projectId: "laba4-d5b38",
+  storageBucket: "laba4-d5b38.firebasestorage.app",
+  messagingSenderId: "945829704514",
+  appId: "1:945829704514:web:b3188624b69c4317520edb",
+  measurementId: "G-F1WV7NY3WG"
+};
 
-  useEffect(() => {
-    const fetchReviews = async () => {
-      try {
-        const normalizedId = apt.id.split(':')[0];
-        const url = `${API_URL}/api/reviews/${normalizedId}?page=${currentPage}`;
-        console.log('Fetching reviews from:', url);
-        const response = await fetch(url);
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('HTTP error:', response.status, errorText);
-          throw new Error(`HTTP error! Status: ${response.status}, Body: ${errorText}`);
-        }
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          const errorText = await response.text();
-          console.error('Response is not JSON:', errorText);
-          throw new Error('Response is not JSON: ' + errorText);
-        }
-        const data = await response.json();
-        console.log(`Fetched reviews for page ${currentPage}:`, data);
-        setReviews(data.reviews || []);
-        setTotalPages(data.totalPages || 1);
-      } catch (error) {
-        console.error('Error fetching reviews:', error.message);
-      }
-    };
-    if (apt.id) fetchReviews();
-  }, [apt.id, currentPage]);
+const firebaseApp = initializeApp(firebaseConfig);
+const db = getFirestore(firebaseApp);
 
-  const handlePrev = () => {
-    setCurrentPhoto((prev) => (prev === 0 ? apt.photos.length - 1 : prev - 1));
-  };
+app.use(cors({
+  origin: true,
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type']
+}));
+app.use(express.json());
 
-  const handleNext = () => {
-    setCurrentPhoto((prev) => (prev === apt.photos.length - 1 ? 0 : prev + 1));
-  };
+app.get('/api/reviews/:apartmentId', async (req, res) => {
+  try {
+    const { apartmentId } = req.params;
+    const normalizedApartmentId = apartmentId.split(':')[0].replace('-', '_');
 
-  const handleReviewSubmit = async (e) => {
-    e.preventDefault();
-    if (!user) {
-      alert('Please log in to leave a review.');
-      console.error('User not authenticated:', user);
-      return;
-    }
-    if (!isBooked) {
-      alert('You can only leave a review for booked apartments.');
-      return;
-    }
-    if (!reviewText.trim()) {
-      alert('Review text cannot be empty.');
-      return;
-    }
-    try {
-      console.log('User:', user.uid, 'Attempting to add review for apartment:', apt.id);
+    const reviewsRef = collection(db, `reviews/${normalizedApartmentId}/review_id`);
+    const snapshot = await getDocs(query(reviewsRef));
+    const totalReviews = snapshot.size;
+    const totalPages = Math.ceil(totalReviews / 10);
 
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
-      let userData = { firstName: 'Unknown', lastName: '' };
-      if (userDoc.exists()) {
-        userData = userDoc.data();
+    let q = query(reviewsRef, orderBy('timestamp', 'desc'), limit(10));
+    if (parseInt(req.query.page) > 1) {
+      const startIndex = (parseInt(req.query.page) - 1) * 10;
+      const firstPageSnapshot = await getDocs(query(reviewsRef, orderBy('timestamp', 'desc'), limit(startIndex)));
+      const lastVisible = firstPageSnapshot.docs[firstPageSnapshot.docs.length - 1];
+      if (lastVisible) {
+        q = query(reviewsRef, orderBy('timestamp', 'desc'), startAfter(lastVisible), limit(10));
       } else {
-        userData = {
-          firstName: user.displayName?.split(' ')[0] || 'Unknown',
-          lastName: user.displayName?.split(' ')[1] || '',
-          email: user.email,
-        };
-        await setDoc(doc(db, 'users', user.uid), userData);
+        return res.json({
+          reviews: [],
+          currentPage: parseInt(req.query.page) || 1,
+          totalPages,
+          totalReviews,
+          hasMore: (parseInt(req.query.page) || 1) < totalPages
+        });
       }
-
-      const normalizedId = apt.id.split(':')[0];
-      const url = `${API_URL}/api/reviews/${normalizedId}`;
-      console.log('Posting review to:', url);
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          text: reviewText,
-          userId: user.uid,
-          firstName: userData.firstName,
-          lastName: userData.lastName,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('HTTP error:', response.status, errorText);
-        throw new Error(`HTTP error! Status: ${response.status}, Body: ${errorText}`);
-      }
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const errorText = await response.text();
-        console.error('Response is not JSON:', errorText);
-        throw new Error('Response is not JSON: ' + errorText);
-      }
-      const data = await response.json();
-      console.log('Review added:', data);
-      setReviewText('');
-      const reviewsResponse = await fetch(`${API_URL}/api/reviews/${normalizedId}?page=1`);
-      if (!reviewsResponse.ok) {
-        const errorText = await reviewsResponse.text();
-        console.error('HTTP error:', reviewsResponse.status, errorText);
-        throw new Error(`HTTP error! Status: ${reviewsResponse.status}, Body: ${errorText}`);
-      }
-      const reviewsContentType = reviewsResponse.headers.get('content-type');
-      if (!reviewsContentType || !reviewsContentType.includes('application/json')) {
-        const errorText = await reviewsResponse.text();
-        console.error('Response is not JSON:', errorText);
-        throw new Error('Response is not JSON: ' + errorText);
-      }
-      const reviewsData = await reviewsResponse.json();
-      setReviews(reviewsData.reviews || []);
-      setTotalPages(reviewsData.totalPages || 1);
-      setCurrentPage(1);
-    } catch (err) {
-      console.error('Error adding review:', err.message);
-      alert('Failed to add review: ' + err.message);
     }
-  };
 
-  const handlePageChange = (pageNumber) => {
-    setCurrentPage(pageNumber);
-  };
+    const querySnapshot = await getDocs(q);
+    const reviews = querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      let timestamp = data.timestamp;
+      if (data.timestamp && typeof data.timestamp.toDate === 'function') {
+        timestamp = data.timestamp.toDate().toISOString();
+      } else if (data.timestamp && isNaN(new Date(data.timestamp).getTime())) {
+        timestamp = new Date().toISOString();
+      }
 
-  const handlePrevPage = () => {
-    setCurrentPage((prev) => Math.max(prev - 1, 1));
-  };
-
-  const handleNextPage = () => {
-    setCurrentPage((prev) => Math.min(prev + 1, totalPages));
-  };
-
-  const formatDate = (timestamp) => {
-    if (!timestamp || typeof timestamp !== 'string') return 'Date unavailable';
-    const date = new Date(timestamp);
-    if (isNaN(date.getTime())) return 'Invalid date';
-    return date.toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'numeric',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-      timeZone: 'Europe/Kyiv',
+      return {
+        id: doc.id,
+        text: data.text || 'No text',
+        firstName: data.firstName || 'Unknown',
+        lastName: data.lastName || '',
+        timestamp: timestamp
+      };
     });
-  };
 
-  return (
-    <div className="apartment-move">
-      <div className="apart-photos">
-        <div className="photo">
-          <img
-            src={apt.photos[currentPhoto]}
-            alt={`${apt.name} ${currentPhoto + 1}`}
-          />
-          <button className="prev" onClick={handlePrev}>
-            ❮
-          </button>
-          <button className="next" onClick={handleNext}>
-            ❯
-          </button>
-        </div>
-      </div>
-      <div className="apart-info">
-        <h3>{apt.name}</h3>
-        <p>{apt.rooms} room{apt.rooms > 1 ? 's' : ''}</p>
-        <p>{apt.price} uah per night</p>
-        <details>
-          <summary>Features</summary>
-          <ul>
-            {apt.features.map((feature, i) => (
-              <li key={i}>{feature}</li>
-            ))}
-          </ul>
-        </details>
-        {user && isBooked && (
-          <form onSubmit={handleReviewSubmit} style={{ marginTop: '20px' }}>
-            <label>Leave a review:</label>
-            <textarea
-              value={reviewText}
-              onChange={(e) => setReviewText(e.target.value)}
-              required
-            />
-            <button type="submit">Submit Review</button>
-          </form>
-        )}
-        <details style={{ marginTop: '20px' }}>
-          <summary>Reviews</summary>
-          {reviews.length > 0 ? (
-            <>
-              <ul>
-                {reviews.map((review, i) => (
-                  <li key={i}>
-                    <p>
-                      <strong>{review.firstName} {review.lastName}</strong> (
-                      {formatDate(review.timestamp)}
-                      ):
-                    </p>
-                    <p>{review.text}</p>
-                  </li>
-                ))}
-              </ul>
-              {totalPages > 1 && (
-                <div className="pagination">
-                  <button
-                    className="pagination-button"
-                    onClick={handlePrevPage}
-                    disabled={currentPage === 1}
-                  >
-                    Previous
-                  </button>
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                    <button
-                      key={page}
-                      className={`pagination-button ${currentPage === page ? 'active' : ''}`}
-                      onClick={() => handlePageChange(page)}
-                    >
-                      {page}
-                    </button>
-                  ))}
-                  <button
-                    className="pagination-button"
-                    onClick={handleNextPage}
-                    disabled={currentPage === totalPages}
-                  >
-                    Next
-                  </button>
-                </div>
-              )}
-            </>
-          ) : (
-            <p>No reviews yet😢</p>
-          )}
-        </details>
-        {isBooked ? (
-          <button className="book" onClick={() => onCancel(index)}>
-            Cancel
-          </button>
-        ) : (
-          <button className="book" onClick={() => onBook(index)}>
-            Book
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
+    res.json({
+      reviews,
+      currentPage: parseInt(req.query.page) || 1,
+      totalPages,
+      totalReviews,
+      hasMore: (parseInt(req.query.page) || 1) < totalPages
+    });
+  } catch (error) {
+    console.error('Error fetching reviews:', error);
+    res.status(500).json({ error: 'Failed to fetch reviews' });
+  }
+});
 
-export default ApartmentCard;
+app.post('/api/reviews/:apartmentId', async (req, res) => {
+  try {
+    const { apartmentId } = req.params;
+    const normalizedApartmentId = apartmentId.split(':')[0].replace('-', '_');
+    const { text, userId, firstName, lastName } = req.body;
+
+    if (!text || !userId) {
+      return res.status(400).json({ error: 'Text and userId are required' });
+    }
+
+    const reviewRef = collection(db, `reviews/${normalizedApartmentId}/review_id`);
+    const newReviewRef = await addDoc(reviewRef, {
+      text,
+      userId,
+      firstName: firstName || 'Unknown',
+      lastName: lastName || '',
+      timestamp: new Date().toISOString()
+    });
+
+    res.status(201).json({ message: 'Review added', reviewId: newReviewRef.id });
+  } catch (error) {
+    console.error('Error adding review:', error);
+    res.status(500).json({ error: 'Failed to add review' });
+  }
+});
+
+app.use(express.static(path.join(__dirname, 'public')));
+
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
+});
