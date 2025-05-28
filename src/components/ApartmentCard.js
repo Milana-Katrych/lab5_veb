@@ -8,6 +8,7 @@ function ApartmentCard({ apt, index, onBook, onCancel, isBooked }) {
   const [reviews, setReviews] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [negativeFeedback, setNegativeFeedback] = useState('');
   const user = auth.currentUser;
   
  const API_URL = process.env.NODE_ENV === 'production' ? 'https://apartlive-back.onrender.com' : 'http://localhost:4000';
@@ -98,6 +99,12 @@ function ApartmentCard({ apt, index, onBook, onCancel, isBooked }) {
       }
       const data = await response.json();
       console.log('Review added:', data);
+
+      if (data.negativeFeedbackMessage) {
+        setNegativeFeedback(data.negativeFeedbackMessage);
+        setTimeout(() => setNegativeFeedback(''), 5000);
+      }
+
       setReviewText('');
       const reviewsResponse = await fetch(`${API_URL}/api/reviews/${normalizedId}?page=1`);
       if (!reviewsResponse.ok) {
@@ -179,6 +186,7 @@ function ApartmentCard({ apt, index, onBook, onCancel, isBooked }) {
             <button type="submit">Submit Review</button>
           </form>
         )}
+        {negativeFeedback && <p className="negative-feedback">{negativeFeedback}</p>}
         <details style={{ marginTop: '20px' }}>
           <summary>Reviews</summary>
           {reviews.length > 0 ? (
