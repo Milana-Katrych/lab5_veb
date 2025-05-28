@@ -28,6 +28,12 @@ app.use(cors({
 }));
 app.use(express.json());
 
+const negativeWords = [
+  'bad', 'poor', 'terrible', 'awful', 'horrible',
+  'dreadful', 'lousy', 'worst', 'unsatisfactory',
+  'disappointing', 'subpar', 'unpleasant', 'negative'
+];
+
 app.get('/api/reviews/:apartmentId', async (req, res) => {
   try {
     const { apartmentId } = req.params;
@@ -98,6 +104,10 @@ app.post('/api/reviews/:apartmentId', async (req, res) => {
       return res.status(400).json({ error: 'Text and userId are required' });
     }
 
+    const containsNegativeWords = negativeWords.some(word => 
+      text.toLowerCase().includes(word.toLowerCase())
+    );
+
     const reviewRef = collection(db, `reviews/${normalizedApartmentId}/review_id`);
     const newReviewRef = await addDoc(reviewRef, {
       text,
@@ -107,7 +117,16 @@ app.post('/api/reviews/:apartmentId', async (req, res) => {
       timestamp: new Date().toISOString()
     });
 
-    res.status(201).json({ message: 'Review added', reviewId: newReviewRef.id });
+    const response = {
+      message: 'Review added',
+      reviewId: newReviewRef.id
+    };
+
+    if (containsNegativeWords) {
+      response.negativeFeedbackMessage = 'Sorry you didn\'t like it. Please contact us to share more details.';
+    }
+
+    res.status(201).json(response);
   } catch (error) {
     console.error('Error adding review:', error);
     res.status(500).json({ error: 'Failed to add review' });
