@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 
@@ -11,7 +12,7 @@ function ApartmentCard({ apt, index, onBook, onCancel, isBooked }) {
   const [negativeFeedback, setNegativeFeedback] = useState('');
   const user = auth.currentUser;
   
- const API_URL = process.env.NODE_ENV === 'production' ? 'https://apartlive-back.onrender.com' : 'http://localhost:4000';
+  const API_URL = process.env.NODE_ENV === 'production' ? 'https://apartlive-back.onrender.com' : 'http://localhost:4000';
 
   useEffect(() => {
     const fetchReviews = async () => {
@@ -102,7 +103,7 @@ function ApartmentCard({ apt, index, onBook, onCancel, isBooked }) {
 
       if (data.negativeFeedbackMessage) {
         setNegativeFeedback(data.negativeFeedbackMessage);
-        setTimeout(() => setNegativeFeedback(''), 5000);
+        setTimeout(() => setNegativeFeedback(''), 10000);
       }
 
       setReviewText('');
@@ -186,7 +187,12 @@ function ApartmentCard({ apt, index, onBook, onCancel, isBooked }) {
             <button type="submit">Submit Review</button>
           </form>
         )}
-        {negativeFeedback && <p className="negative-feedback">{negativeFeedback}</p>}
+        {negativeFeedback && (
+          <p className="negative-feedback">
+            Sorry you didn't like it. Please{' '}
+            <Link to="/contact">contact us</Link> to share more details.
+          </p>
+        )}
         <details style={{ marginTop: '20px' }}>
           <summary>Reviews</summary>
           {reviews.length > 0 ? (
