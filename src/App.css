@@ -504,6 +504,12 @@ form button
     opacity: 0.6;
     box-shadow: none;
 }
+.negative-feedback
+{
+    color: red;
+    margin-top: 10px;
+    font-size: 14px;
+}
 @media (max-width: 768px)
 {
     header
