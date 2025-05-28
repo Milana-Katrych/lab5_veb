@@ -509,6 +509,7 @@ form button
     color: red;
     margin-top: 10px;
     font-size: 14px;
+    text-decoration: none;
 }
 @media (max-width: 768px)
 {
