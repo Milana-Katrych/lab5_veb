@@ -504,6 +504,20 @@ form button
     opacity: 0.6;
     box-shadow: none;
 }
+.negative-feedback
+{
+    color: red;
+    margin-top: 10px;
+    font-size: 14px;
+}
+.negative-feedback .contact-button
+{
+    display: inline-block;
+    border: none;
+    text-decoration: none;
+    cursor: pointer;
+    color: red;
+}
 @media (max-width: 768px)
 {
     header
