@@ -190,7 +190,7 @@ function ApartmentCard({ apt, index, onBook, onCancel, isBooked }) {
         {negativeFeedback && (
           <p className="negative-feedback">
             Sorry you didn't like it. Please{' '}
-            <Link to="/contact">contact us</Link> to share more details.
+            <Link to="/contact" className="contact-button">contact us</Link> to share more details.
           </p>
         )}
         <details style={{ marginTop: '20px' }}>
